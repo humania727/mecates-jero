@@ -183,7 +183,18 @@
     border-color: var(--border-2);
     outline: none;
   }
-  .title-hint { font-size: 11px; color: var(--muted-2); padding-left: 9px; }
+  /* La pista solo aparece al pasar el mouse por el titulo: se mantiene
+     descubrible sin ocupar una linea fija en el encabezado. */
+  .title-hint {
+    font-size: 11px;
+    color: var(--muted-2);
+    padding-left: 9px;
+    opacity: 0;
+    transition: opacity .15s;
+    pointer-events: none;
+  }
+  .title-wrap:hover .title-hint,
+  .title-editable:focus + .title-hint { opacity: 1; }
 
   .container { max-width: 1180px; margin: 0 auto; padding: 24px 20px 40px; }
 
