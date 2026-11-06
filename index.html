@@ -859,6 +859,77 @@
   }
 
 
+
+  /* ── TARJETAS DE GANANCIA POR VENTA ─────────────────────── */
+  .gan-resumen {
+    display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline;
+    padding: 0 2px 16px; font-size: 13px; color: var(--muted);
+    border-bottom: 1px solid var(--border); margin-bottom: 18px;
+  }
+  .gan-resumen b { color: var(--text); font-size: 17px; font-weight: 700; letter-spacing: -.3px; }
+  .gan-resumen .gr-gan b { color: var(--green); }
+
+  .vc-lista { display: grid; gap: 14px; }
+
+  .venta-card {
+    background: var(--grad-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    transition: border-color .15s;
+  }
+  .venta-card:hover { border-color: var(--border-2); }
+
+  .vc-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+    padding: 13px 16px;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+  }
+  .vc-fecha { font-size: 14px; font-weight: 700; color: var(--text); }
+  .vc-sub   { font-size: 11.5px; color: var(--muted-2); margin-top: 2px; }
+  .vc-margen {
+    font-size: 13px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
+    background: var(--green-soft); color: var(--green);
+    border: 1px solid rgba(52,211,153,.3); white-space: nowrap;
+  }
+  .vc-margen.neg { background: var(--red-soft); color: var(--red); border-color: rgba(248,113,113,.35); }
+
+  .vc-lineas { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  .vc-lineas td { padding: 9px 16px; border-bottom: 1px solid var(--border); }
+  .vc-lineas tr:last-child td { border-bottom: none; }
+  .vc-prod { font-weight: 600; color: var(--text); }
+  .vc-det  { font-size: 11px; color: var(--muted-2); margin-top: 1px; }
+  .vc-gl   { text-align: right; font-weight: 700; color: var(--green); white-space: nowrap; }
+  .vc-gl.neg { color: var(--red); }
+  .vc-pct  { font-size: 11px; color: var(--muted-2); font-weight: 600; }
+
+  .vc-pie {
+    display: flex; flex-wrap: wrap; gap: 22px;
+    padding: 13px 16px;
+    background: var(--surface-2);
+    border-top: 1px solid var(--border);
+  }
+  .vc-pie div { display: flex; flex-direction: column; gap: 2px; }
+  .vc-pie span { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .6px; font-weight: 600; }
+  .vc-pie b { font-size: 15px; font-weight: 700; color: var(--text); }
+  .vc-pie .vc-total-gan { margin-left: auto; text-align: right; }
+  .vc-pie .vc-total-gan b { font-size: 20px; color: var(--green); letter-spacing: -.5px; }
+  .vc-pie .vc-total-gan.neg b { color: var(--red); }
+
+  .gan-nota {
+    font-size: 11.5px; color: var(--muted-2); line-height: 1.7;
+    margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 720px) {
+    .vc-lineas td { padding: 8px 12px; }
+    .vc-head, .vc-pie { padding: 11px 12px; }
+    .vc-pie { gap: 14px; }
+    .vc-pie .vc-total-gan { margin-left: 0; text-align: left; width: 100%; }
+  }
+
   /* ── PANTALLA DE INGRESO ────────────────────────────────── */
   .gate {
     position: fixed; inset: 0; z-index: 9999;
@@ -1053,6 +1124,7 @@
     <button class="tab-btn" onclick="showTab('ventas', this)">&#8599; Registrar Venta</button>
     <button class="tab-btn" onclick="showTab('compras', this)">&#8600; Registrar Compra</button>
     <button class="tab-btn" onclick="showTab('historial', this)">&#128203; Historial</button>
+    <button class="tab-btn" onclick="showTab('ganancias', this)">&#128176; Ganancias</button>
     <button class="tab-btn" onclick="showTab('caja', this)">&#128184; Caja / Banco</button>
     <button class="tab-btn" onclick="showTab('sync', this)">&#9729;&#65039; Sync</button>
   </div>
@@ -1279,6 +1351,25 @@
         <tbody id="hist-body"></tbody>
       </table>
       <div class="resumen-hist" id="resumen-hist"></div>
+    </div>
+  </div>
+
+  <!-- PANEL GANANCIAS -->
+  <div id="panel-ganancias" class="panel">
+    <div class="panel-body">
+      <div class="hist-controls">
+        <select id="gan-periodo" onchange="renderGanancias()">
+          <option value="">Todo el historial</option>
+          <option value="mes">Este mes</option>
+          <option value="ano">Este ano</option>
+        </select>
+        <select id="gan-prod" onchange="renderGanancias()">
+          <option value="">Todos los productos</option>
+        </select>
+      </div>
+      <div class="gan-resumen" id="gan-resumen"></div>
+      <div class="vc-lista" id="gan-lista"></div>
+      <div class="gan-nota" id="gan-nota"></div>
     </div>
   </div>
 
@@ -1581,6 +1672,7 @@ function showTab(tab, btn) {
   if (btn) btn.classList.add("active");
   if (tab === "caja")      renderCaja();
   if (tab === "historial") renderHistorial();
+  if (tab === "ganancias") renderGanancias();
   if (tab === "sync")      renderSync();
   if (tab === "ventas")    { document.getElementById("v-fecha").value = today(); renderCarrito(); }
   if (tab === "compras")   { document.getElementById("c-fecha").value = today(); renderCarritoCompra(); }
@@ -1589,6 +1681,7 @@ function showTab(tab, btn) {
 function renderAll() {
   renderInventario();
   renderHistorial();
+  renderGanancias();
   renderCaja();
   renderCarrito();
   renderCarritoCompra();
@@ -2305,6 +2398,197 @@ function exportarCSV() {
 // ======================================================================
 // RESET
 // ======================================================================
+
+// ======================================================================
+// GANANCIAS — costo promedio movil
+// ======================================================================
+// El costo de cada venta se calcula con el promedio ponderado que habia
+// en ese momento. Recorre los movimientos en orden de fecha: cada compra
+// recalcula el promedio, cada venta se lleva el promedio vigente.
+//
+// El stock inicial (el que ya estaba antes del primer movimiento) se
+// valora al precio de compra base de cada producto, que es el unico dato
+// de costo que existe para esas unidades.
+
+function calcularCostos() {
+  var u = {}, v = {}, i, p, base;
+  for (i = 0; i < PRODUCTOS.length; i++) {
+    p = PRODUCTOS[i];
+    u[p.id] = STOCK_INICIAL[p.id] || 0;
+    v[p.id] = (STOCK_INICIAL[p.id] || 0) * p.precioCompra;
+  }
+  var precioBase = function (pid) {
+    var x = PRODUCTOS.filter(function (q) { return q.id === pid; })[0];
+    return x ? x.precioCompra : 0;
+  };
+
+  var orden = movimientos.slice().sort(function (a, b) {
+    if (a.fecha !== b.fecha) return a.fecha < b.fecha ? -1 : 1;
+    return a.id - b.id;
+  });
+
+  var costoVenta = {};
+  for (i = 0; i < orden.length; i++) {
+    var m = orden[i], pid = m.productoId;
+    if (u[pid] === undefined) { u[pid] = 0; v[pid] = 0; }
+    if (m.tipo === "compra") {
+      u[pid] += m.cant;
+      v[pid] += m.cant * m.precio;
+    } else {
+      base = precioBase(pid);
+      var costo = u[pid] > 0 ? v[pid] / u[pid] : base;
+      costoVenta[m.id] = costo;
+      v[pid] -= costo * m.cant;
+      u[pid] -= m.cant;
+      // Si se vendio mas de lo que habia registrado, se reinicia para no
+      // arrastrar un costo negativo al resto del historial.
+      if (u[pid] <= 0) { u[pid] = 0; v[pid] = 0; }
+    }
+  }
+
+  var costoActual = {};
+  for (i = 0; i < PRODUCTOS.length; i++) {
+    p = PRODUCTOS[i];
+    costoActual[p.id] = u[p.id] > 0 ? v[p.id] / u[p.id] : p.precioCompra;
+  }
+  return { costoVenta: costoVenta, costoActual: costoActual };
+}
+
+// Agrupa las ventas: por numero de factura si lo tiene, si no por fecha.
+function agruparVentas(ventas) {
+  var grupos = {}, orden = [];
+  for (var i = 0; i < ventas.length; i++) {
+    var m = ventas[i];
+    var fac = (m.factura || "").trim();
+    var clave = fac ? "F|" + fac : "D|" + m.fecha;
+    if (!grupos[clave]) {
+      grupos[clave] = { fecha: m.fecha, factura: fac, lineas: [] };
+      orden.push(clave);
+    }
+    grupos[clave].lineas.push(m);
+    if (m.fecha < grupos[clave].fecha) grupos[clave].fecha = m.fecha;
+  }
+  var lista = orden.map(function (k) { return grupos[k]; });
+  lista.sort(function (a, b) { return a.fecha < b.fecha ? 1 : (a.fecha > b.fecha ? -1 : 0); });
+  return lista;
+}
+
+function renderGanancias() {
+  var sel = document.getElementById("gan-prod");
+  if (sel && sel.options.length <= 1) {
+    for (var k = 0; k < PRODUCTOS.length; k++) {
+      var o = document.createElement("option");
+      o.value = PRODUCTOS[k].id; o.textContent = PRODUCTOS[k].nombre;
+      sel.appendChild(o);
+    }
+  }
+  var fProd    = sel ? sel.value : "";
+  var fPeriodo = (document.getElementById("gan-periodo") || {}).value || "";
+
+  var cc = calcularCostos();
+  var hoy = new Date();
+  var desde = "";
+  if (fPeriodo === "mes") desde = hoy.getFullYear() + "-" + String(hoy.getMonth() + 1).padStart(2, "0") + "-01";
+  if (fPeriodo === "ano") desde = hoy.getFullYear() + "-01-01";
+
+  var ventas = movimientos.filter(function (m) {
+    if (m.tipo !== "venta") return false;
+    if (fProd && m.productoId !== fProd) return false;
+    if (desde && m.fecha < desde) return false;
+    return true;
+  });
+
+  var grupos = agruparVentas(ventas);
+  var lista = document.getElementById("gan-lista");
+  var resumen = document.getElementById("gan-resumen");
+  var nota = document.getElementById("gan-nota");
+
+  if (!grupos.length) {
+    lista.innerHTML = '<div class="empty">No hay ventas en este periodo.</div>';
+    resumen.innerHTML = "";
+    nota.innerHTML = "";
+    return;
+  }
+
+  var totVendido = 0, totCosto = 0, html = "";
+
+  for (var g = 0; g < grupos.length; g++) {
+    var gr = grupos[g];
+    var gVend = 0, gCost = 0, filas = "";
+
+    for (var j = 0; j < gr.lineas.length; j++) {
+      var m = gr.lineas[j];
+      var prod = PRODUCTOS.filter(function (q) { return q.id === m.productoId; })[0];
+      var nombre = prod ? prod.nombre : m.productoId;
+      var costoU = cc.costoVenta[m.id] !== undefined ? cc.costoVenta[m.id] : (prod ? prod.precioCompra : 0);
+      var vend = m.cant * m.precio;
+      var cost = m.cant * costoU;
+      var gan = vend - cost;
+      var pct = m.precio > 0 ? (m.precio - costoU) / m.precio * 100 : 0;
+      gVend += vend; gCost += cost;
+
+      filas +=
+        '<tr>' +
+          '<td>' +
+            '<div class="vc-prod">' + nombre + '</div>' +
+            '<div class="vc-det">' + m.cant + ' und  &middot;  vendido a ' + fmt(m.precio) +
+            '  &middot;  costo ' + fmt(costoU) + '</div>' +
+          '</td>' +
+          '<td class="vc-gl' + (gan < 0 ? ' neg' : '') + '">' +
+            (gan >= 0 ? '+' : '') + fmt(gan) +
+            '<div class="vc-pct">' + pct.toFixed(1) + '%</div>' +
+          '</td>' +
+        '</tr>';
+    }
+
+    var gGan = gVend - gCost;
+    var gPct = gVend > 0 ? gGan / gVend * 100 : 0;
+    totVendido += gVend; totCosto += gCost;
+
+    html +=
+      '<div class="venta-card">' +
+        '<div class="vc-head">' +
+          '<div>' +
+            '<div class="vc-fecha">' + fmtFecha(gr.fecha) + '</div>' +
+            '<div class="vc-sub">' +
+              (gr.factura ? 'Factura ' + gr.factura + '  &middot;  ' : '') +
+              gr.lineas.length + (gr.lineas.length === 1 ? ' producto' : ' productos') +
+            '</div>' +
+          '</div>' +
+          '<div class="vc-margen' + (gGan < 0 ? ' neg' : '') + '">' + gPct.toFixed(1) + '% de margen</div>' +
+        '</div>' +
+        '<table class="vc-lineas"><tbody>' + filas + '</tbody></table>' +
+        '<div class="vc-pie">' +
+          '<div><span>Vendido</span><b>' + fmt(gVend) + '</b></div>' +
+          '<div><span>Costo</span><b>' + fmt(gCost) + '</b></div>' +
+          '<div class="vc-total-gan' + (gGan < 0 ? ' neg' : '') + '">' +
+            '<span>Ganancia</span><b>' + (gGan >= 0 ? '+' : '') + fmt(gGan) + '</b>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  lista.innerHTML = html;
+
+  var totGan = totVendido - totCosto;
+  var totPct = totVendido > 0 ? totGan / totVendido * 100 : 0;
+  resumen.innerHTML =
+    '<div>' + grupos.length + (grupos.length === 1 ? ' venta' : ' ventas') + '</div>' +
+    '<div>Vendido <b>' + fmt(totVendido) + '</b></div>' +
+    '<div>Costo <b>' + fmt(totCosto) + '</b></div>' +
+    '<div class="gr-gan">Ganancia <b>' + fmt(totGan) + '</b> (' + totPct.toFixed(1) + '%)</div>';
+
+  var li = "";
+  for (var z = 0; z < PRODUCTOS.length; z++) {
+    var pr = PRODUCTOS[z];
+    li += (z ? '  &middot;  ' : '') + pr.nombre + ' ' + fmt(cc.costoActual[pr.id]);
+  }
+  nota.innerHTML =
+    '<b>Costo promedio actual por unidad:</b> ' + li + '<br>' +
+    'El costo de cada venta es el promedio que tenias al momento de venderla, ' +
+    'asi que una compra nueva no cambia la ganancia de las ventas pasadas. ' +
+    'Esta ganancia es antes de gastos: los de la pestana Caja / Banco van aparte.';
+}
 
 // ======================================================================
 // SINCRONIZACION — Firebase Realtime Database
