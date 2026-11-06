@@ -860,6 +860,24 @@
 
 
 
+
+  /* ── COMISION EN EL REGISTRO DE VENTA ───────────────────── */
+  .comi-box {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 14px; flex-wrap: wrap;
+    background: var(--orange-soft);
+    border: 1px solid rgba(255,122,69,.3);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    margin: -6px 0 16px;
+  }
+  .comi-box.oculto { display: none; }
+  .comi-lbl  { font-size: 13px; color: var(--orange); font-weight: 600; }
+  .comi-sub  { font-size: 11.5px; color: var(--muted-2); margin-top: 2px; }
+  .comi-val  { font-size: 20px; font-weight: 700; color: var(--orange); letter-spacing: -.4px; }
+  .comi-chk  { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; width: 100%; }
+  .comi-chk input { width: 16px; height: 16px; accent-color: var(--orange); cursor: pointer; flex: none; }
+
   /* ── TARJETAS DE GANANCIA POR VENTA ─────────────────────── */
   .gan-resumen {
     display: flex; flex-wrap: wrap; gap: 18px; align-items: baseline;
@@ -1222,6 +1240,17 @@
           <div class="carrito-lineas-count" id="carrito-lineas-count">0 lineas</div>
         </div>
         <div class="carrito-total-val" id="carrito-total-val">&#8353;0</div>
+      </div>
+      <div class="comi-box oculto" id="comi-box">
+        <div>
+          <div class="comi-lbl">&#128181; Comision a pagar</div>
+          <div class="comi-sub" id="comi-detalle"></div>
+        </div>
+        <div class="comi-val" id="comi-val">&#8353;0</div>
+        <label class="comi-chk">
+          <input type="checkbox" id="comi-registrar" checked>
+          <span>Registrarla como gasto al confirmar la venta, para que baje del saldo del banco</span>
+        </label>
       </div>
       <div style="display:flex;align-items:center;flex-wrap:wrap;gap:8px">
         <button class="btn-submit" onclick="registrarVentaCarrito()">&#10003; Registrar Venta</button>
@@ -1904,6 +1933,29 @@ function actualizarTotalCarrito() {
   const total = carrito.reduce((s,l) => s + l.cant * l.precio, 0);
   document.getElementById("carrito-total-val").textContent = fmt(total);
   document.getElementById("carrito-lineas-count").textContent = carrito.length + " linea" + (carrito.length!==1?"s":"");
+  actualizarComisionCarrito();
+}
+
+// Comision de la factura que se esta armando, en vivo.
+function comisionDelCarrito() {
+  let monto = 0, unidades = 0;
+  for (const l of carrito) {
+    if (!l.productoId || !l.cant) continue;
+    monto    += l.cant * getComision(l.productoId);
+    unidades += l.cant;
+  }
+  return { monto, unidades };
+}
+
+function actualizarComisionCarrito() {
+  const box = document.getElementById("comi-box");
+  if (!box) return;
+  const c = comisionDelCarrito();
+  if (c.monto <= 0) { box.classList.add("oculto"); return; }
+  box.classList.remove("oculto");
+  document.getElementById("comi-val").textContent = fmt(c.monto);
+  document.getElementById("comi-detalle").textContent =
+    c.unidades + " unidad" + (c.unidades !== 1 ? "es" : "") + " en esta factura";
 }
 
 function renderCarrito() {
@@ -1937,6 +1989,8 @@ function renderCarrito() {
 }
 
 function limpiarCarrito() {
+  const _cb = document.getElementById("comi-box");
+  if (_cb) _cb.classList.add("oculto");
   carrito = []; carritoNextLid = 1;
   document.getElementById("v-factura").value = "";
   document.getElementById("v-notas").value   = "";
@@ -1966,11 +2020,32 @@ function registrarVentaCarrito() {
     const p = PRODUCTOS.find(x => x.id === pid);
     if (cantPorProd[pid] > stock) { err.textContent = "Stock insuficiente para " + (p ? p.nombre : pid) + ". Disponible: " + stock + " und."; return; }
   }
+  // La comision se calcula ANTES de limpiar el carrito.
+  const com = comisionDelCarrito();
+  const chk = document.getElementById("comi-registrar");
+  const registrarCom = com.monto > 0 && chk && chk.checked;
+
   for (const linea of carrito) {
     movimientos.push({ id: nextId++, fecha, tipo:"venta", productoId: linea.productoId, cant: linea.cant, precio: linea.precio, factura: factura||"", notas: notas||"", afectaBanco: true, empresa: "" });
   }
+
+  if (registrarCom) {
+    gastos.push({
+      id: nextGastoId++,
+      fecha: fecha,
+      descripcion: "Comision venta " + (factura ? factura : fmtFecha(fecha)),
+      monto: com.monto,
+      auto: true
+    });
+  }
+
   guardarDatos();
   limpiarCarrito();
+  if (registrarCom) {
+    ok.innerHTML = "&#10003; Venta registrada  &middot;  comision de " + fmt(com.monto) + " anotada como gasto";
+  } else {
+    ok.innerHTML = "&#10003; Venta registrada";
+  }
   ok.classList.add("show");
   setTimeout(() => ok.classList.remove("show"), 3000);
   renderAll();
@@ -2675,9 +2750,10 @@ function renderGanancias() {
     '<b>Costo promedio actual por unidad:</b> ' + li + '<br>' +
     'El costo de cada venta es el promedio que tenias al momento de venderla, ' +
     'asi que una compra nueva no cambia la ganancia de las ventas pasadas. ' +
-    'Esta ganancia ya tiene descontada la comision por unidad, pero no los gastos ' +
-    'de la pestana Caja / Banco, que van aparte. El saldo del banco no cambia por esta ' +
-    'tabla: si la comision ya la anotas como gasto, segui haciendolo.';
+    'Esta ganancia ya tiene descontada la comision por unidad. Esa misma comision ' +
+    'tambien aparece como gasto en Caja / Banco, porque es plata que sale del banco: ' +
+    'son dos vistas de lo mismo, no se paga dos veces. Los demas gastos (sacos, ' +
+    'transporte) no estan restados aca.';
 }
 
 // ======================================================================
