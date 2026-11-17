@@ -948,6 +948,33 @@
     .vc-pie .vc-total-gan { margin-left: 0; text-align: left; width: 100%; }
   }
 
+
+  /* ── CODIGO DE GAVETA (recuperar acceso) ────────────────── */
+  .gav-box {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border);
+  }
+  .gav-tit { font-size: 12.5px; font-weight: 600; color: var(--muted); margin-bottom: 8px; }
+  .gav-code {
+    font-family: var(--mono); font-size: 12px; color: var(--accent-2);
+    background: var(--bg-soft); border: 1px solid var(--border-2);
+    border-radius: var(--radius-sm); padding: 10px 12px;
+    word-break: break-all; margin-bottom: 10px; display: none;
+  }
+  .gav-code.ver { display: block; }
+  .gav-aviso { font-size: 11.5px; color: var(--muted-2); line-height: 1.6; margin-top: 8px; }
+  .gate-link {
+    display: inline-block; margin-top: 14px; font-size: 12.5px;
+    color: var(--accent-2); cursor: pointer; text-decoration: underline;
+  }
+  .gate-gaveta { display: none; margin-top: 14px; }
+  .gate-gaveta.open { display: block; }
+  .gate-gaveta textarea {
+    width: 100%; background: var(--bg-soft); border: 1px solid var(--border-2);
+    color: var(--text); border-radius: var(--radius-sm); padding: 10px 12px;
+    font-family: var(--mono); font-size: 12px; resize: vertical; min-height: 58px;
+  }
+  .gate-gaveta textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
   /* ── PANTALLA DE INGRESO ────────────────────────────────── */
   .gate {
     position: fixed; inset: 0; z-index: 9999;
@@ -1104,6 +1131,16 @@
       </div>
       <button class="btn-cancel" onclick="crearInventarioNuevo()">Crear inventario nuevo con este codigo</button>
     </div>
+    <span class="gate-link" onclick="toggleGateGaveta()">No recuerdo mi codigo pero tengo el codigo de gaveta</span>
+    <div class="gate-gaveta" id="gate-gaveta">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:8px;line-height:1.6">
+        Pega aqui el codigo de gaveta que aparece en la pestana Sync del equipo que si entra.
+      </div>
+      <textarea id="gate-gaveta-input" placeholder="Pega aqui el codigo largo" autocomplete="off" spellcheck="false"></textarea>
+      <button class="btn-submit gate-btn" onclick="entrarConGaveta()">Conectar a esa gaveta</button>
+      <span class="error-msg" id="gate-gaveta-err" style="display:block;margin-top:8px"></span>
+    </div>
+
     <div class="gate-nota">
       El codigo no se guarda en ningun servidor: se usa para calcular, dentro de este navegador,
       donde estan tus datos. Si lo perdes no hay forma de recuperarlo.
@@ -1491,8 +1528,21 @@
           Para verlos en el celular, abri la app ahi y escribi el mismo codigo.
         </div>
         <div style="font-size:12px;color:var(--muted-2);margin-bottom:16px">
-          Gaveta: <span class="factura-tag" id="sync-sala-corta">—</span>
+          Gaveta: <span class="factura-tag" id="sync-sala-corta">&mdash;</span>
           <span id="sync-last-text" style="margin-left:10px"></span>
+        </div>
+        <div class="gav-box">
+          <div class="gav-tit">&#128273; Codigo de gaveta &mdash; para conectar otro equipo sin el codigo numerico</div>
+          <div class="gav-code" id="gav-code">&mdash;</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="copy-btn" id="gav-btn-ver" onclick="verGaveta()">&#128065; Mostrar</button>
+            <button class="copy-btn" id="gav-btn-copiar" onclick="copiarGaveta()" style="display:none">&#128203; Copiar</button>
+          </div>
+          <div class="gav-aviso">
+            Este codigo abre tu inventario sin pedir nada mas: tratalo como una contrasena.
+            Sirve para conectar una computadora o un celular nuevo cuando no recordas el
+            codigo numerico. Anotalo junto con el codigo.
+          </div>
         </div>
         <div style="display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn-submit" onclick="syncNow()">&#8635; Sincronizar ahora</button>
@@ -2998,11 +3048,77 @@ function salirDeEsteDispositivo() {
   location.reload();
 }
 
+// ── Codigo de gaveta: recuperar el acceso sin el codigo numerico ──────
+// El nombre de la gaveta es lo unico que hace falta para llegar a los
+// datos. Mostrarlo permite conectar otro equipo cuando el codigo
+// numerico se perdio. Es equivalente a una contrasena, por eso esta
+// escondido detras de un boton y con su aviso.
+
+function verGaveta() {
+  var c = document.getElementById("gav-code");
+  var b1 = document.getElementById("gav-btn-ver");
+  var b2 = document.getElementById("gav-btn-copiar");
+  if (!c) return;
+  var visible = c.classList.toggle("ver");
+  c.textContent = salaId || "(todavia sin conectar)";
+  if (b1) b1.innerHTML = visible ? "&#128584; Ocultar" : "&#128065; Mostrar";
+  if (b2) b2.style.display = visible && salaId ? "" : "none";
+}
+
+function copiarGaveta() {
+  if (!salaId) return;
+  var btn = document.getElementById("gav-btn-copiar");
+  var fin = function () {
+    if (btn) { btn.innerHTML = "&#10003; Copiado"; setTimeout(function () { btn.innerHTML = "&#128203; Copiar"; }, 2000); }
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(salaId).then(fin).catch(function () { prompt("Copia este codigo:", salaId); });
+  } else {
+    prompt("Copia este codigo:", salaId);
+  }
+}
+
+function toggleGateGaveta() {
+  var d = document.getElementById("gate-gaveta");
+  if (d) {
+    d.classList.toggle("open");
+    if (d.classList.contains("open")) {
+      var i = document.getElementById("gate-gaveta-input");
+      if (i) i.focus();
+    }
+  }
+}
+
+function entrarConGaveta() {
+  var inp = document.getElementById("gate-gaveta-input");
+  var err = document.getElementById("gate-gaveta-err");
+  if (!inp || !err) return;
+  err.textContent = "";
+  var sala = (inp.value || "").trim().toLowerCase().replace(/[^a-f0-9]/g, "");
+  if (!salaValida(sala)) {
+    err.textContent = "Ese codigo no tiene la forma correcta. Copialo completo desde la pestana Sync del otro equipo.";
+    return;
+  }
+  var db = fbListo();
+  if (!db) { err.textContent = "No se pudo conectar con la nube. Revisa tu internet."; return; }
+  db.ref(RAIZ_FB + "/" + sala).once("value").then(function (snap) {
+    if (!snap.exists()) {
+      err.textContent = "No hay ningun inventario con ese codigo de gaveta. Revisa que este completo.";
+      return;
+    }
+    abrirSala(sala);
+  }).catch(function () {
+    err.textContent = "No se pudo verificar. Intenta de nuevo.";
+  });
+}
+
 // ─── Panel de estado ────────────────────────────────────────────────────
 function renderSync() {
   var last = localStorage.getItem("mecates_last_sync");
   var el = document.getElementById("sync-last-text");
   if (el && last) el.textContent = "Ultimo guardado: " + new Date(last).toLocaleString("es-CR");
+  var gc = document.getElementById("gav-code");
+  if (gc && gc.classList.contains("ver")) gc.textContent = salaId || "(todavia sin conectar)";
   var eq = document.getElementById("sync-sala-corta");
   if (eq) eq.textContent = salaId ? salaId.slice(0, 6) + "…" : "—";
 }
